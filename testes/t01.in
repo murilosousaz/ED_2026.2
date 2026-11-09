@@ -1,0 +1,12 @@
+CRIAR 30 5 Palestra_IA
+CRIAR 10 2 Oficina_Python
+CRIAR 20 3 Minicurso_Redes
+CRIAR 10 5 Duplicado
+CRIAR 40 0 Capacidade_Invalida
+BUSCAR 20
+BUSCAR 99
+BUSCAR 10
+LISTAR
+ARVORE
+RELATORIO
+FIM

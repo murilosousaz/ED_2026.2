@@ -1,0 +1,10 @@
+{
+    "versao": "UECE-ED-2026.2-EVENTOS-V2",
+    "equipe": "EQ01",
+    "integrantes": [
+        {"nome": "Murilo Sousa", "matricula": "00000000", "participacao_percentual": 100}
+    ],
+    "linguagem": "C11",
+    "compilar": "make",
+    "executar": "./bin/eventos"
+}

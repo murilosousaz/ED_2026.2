@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Relatório Técnico — Inscrições em Eventos Acadêmicos</title>
+<style>
+  body { font-family: "DejaVu Serif", serif; font-size: 10pt; line-height: 1.22; margin: 1.5cm; color: #111; }
+  h1 { font-size: 15pt; text-align: center; margin: 0 0 2pt 0; }
+  h2 { font-size: 12pt; border-bottom: 1px solid #888; padding-bottom: 1pt; margin: 10pt 0 4pt 0; }
+  h3 { font-size: 10.5pt; margin: 6pt 0 2pt 0; }
+  p { margin: 4pt 0; }
+  pre { font-family: "DejaVu Sans Mono", monospace; font-size: 8pt; background: #f4f4f4; border: 1px solid #ccc; padding: 4pt; white-space: pre; margin: 4pt 0; }
+  table { border-collapse: collapse; width: 100%; margin: 5pt 0; }
+  th, td { border: 1px solid #666; padding: 2pt 5pt; font-size: 8.5pt; text-align: left; }
+  th { background: #e8e8e8; }
+  code { font-family: "DejaVu Sans Mono", monospace; font-size: 8pt; background: #f0f0f0; padding: 0 1pt; }
+  .meta { text-align: center; font-size: 9.5pt; color: #444; margin: 0 0 8pt 0; }
+  ul { margin: 3pt 0 3pt 16pt; }
+  ol { margin: 3pt 0 3pt 16pt; }
+  li { margin-bottom: 1pt; }
+</style>
+</head>
+<body>
+
+<h1>Relatório Técnico</h1>
+<p class="meta">
+Sistema de Gerenciamento de Inscrições em Eventos Acadêmicos<br>
+Disciplina: Estrutura de Dados — Universidade Estadual do Ceará (UECE)<br>
+Professor: Bonfim Amaro Junior &nbsp;·&nbsp; Equipe: EQ01 &nbsp;·&nbsp; 2026.2
+</p>
+
+<h2>1. Problema</h2>
+<p>
+A UECE realizará uma semana acadêmica com palestras, oficinas e minicursos. Cada
+atividade possui um <b>código único</b>, um <b>título</b> e uma <b>capacidade
+limitada</b>. Estudantes podem se inscrever em uma ou mais atividades. Havendo vaga,
+a inscrição é confirmada; caso contrário, o estudante entra em uma <b>fila de espera
+FIFO</b>, respeitando a ordem de chegada.
+</p>
+<p>
+Quando uma inscrição confirmada é cancelada, a vaga liberada é ocupada
+automaticamente pelo primeiro da fila. Quando a capacidade de uma atividade aumenta,
+vários estudantes são transferidos da fila para a lista de inscritos, preservando a
+política FIFO. O objetivo é um programa de terminal em C11, com TADs e alocação
+dinâmica, avaliado pela correção das estruturas e de sua integração.
+</p>
+
+<h2>2. Arquitetura dos TADs</h2>
+<p>
+O sistema é decomposto em cinco TADs, cada um com interface (<code>.h</code>) e
+implementação (<code>.c</code>) separadas: <b>Atividade</b>, <b>ABB</b>,
+<b>Lista</b> (inscritos), <b>Fila</b> (espera) e <b>Histórico</b>.
+</p>
+
+<h3>2.1 Atividade</h3>
+<pre>typedef struct Atividade {
+    int codigo;
+    char titulo[100];
+    int capacidade;
+    int qtdInscritos;
+    int qtdEspera;
+    Lista inscritos;   /* lista de inscritos */
+    Fila  espera;      /* fila de espera   */
+} Atividade;</pre>
+<p>
+O código é um inteiro positivo único. Cada nó da ABB guarda uma referência a uma
+Atividade, que por sua vez contém sua lista e sua fila. Os contadores
+<code>qtdInscritos</code> e <code>qtdEspera</code> espelham o número real de nós de
+cada estrutura.
+</p>
+
+<h3>2.2 Lista de inscritos</h3>
+<pre>typedef struct NoInscrito {
+    int matricula;
+    char nome[100];
+    struct NoInscrito *prox;
+} NoInscrito;
+
+typedef struct Lista {
+    NoInscrito *inicio;
+    NoInscrito *fim;
+} Lista;</pre>
+<p>
+Lista simplesmente encadeada com ponteiros de início e fim. Novas inscrições e
+promoções entram <b>sempre no fim</b> (O(1)). A remoção por matrícula percorre a
+lista e trata explicitamente a remoção do primeiro, de um elemento intermediário e
+do último; ao remover o último, o ponteiro <code>fim</code> é reajustado para o nó
+anterior (ou <code>NULL</code>), nunca apontando para memória liberada.
+</p>
+
+<h3>2.3 Fila de espera</h3>
+<pre>typedef struct NoEspera {
+    int matricula;
+    char nome[100];
+    struct NoEspera *prox;
+} NoEspera;
+
+typedef struct Fila {
+    NoEspera *inicio;
+    NoEspera *fim;
+} Fila;</pre>
+<p>
+Fila FIFO encadeada com enfileirar no fim e desenfileirar do início, ambos O(1).
+Além disso, permite <b>cancelar uma reserva em qualquer posição</b> (início, meio ou
+fim) preservando a ordem relativa dos demais, apenas religando os ponteiros.
+</p>
+
+<h3>2.4 Árvore Binária de Busca (ABB)</h3>
+<pre>typedef struct NoABB {
+    Atividade *atividade;
+    struct NoABB *esq;
+    struct NoABB *dir;
+} NoABB;</pre>
+<p>
+Indexada pelo código da atividade: inserção sem duplicados, busca por código,
+percurso em ordem crescente, contagem de nós e cálculo de altura (altura −1 para
+árvore vazia, 0 para uma árvore com apenas a raiz). A remoção de atividades não é
+exigida e não foi implementada.
+</p>
+
+<h3>2.5 Histórico</h3>
+<pre>typedef struct Evento {
+    int seq;
+    char tipo[32];
+    int codigo;
+    int matricula;
+    struct Evento *prox;
+} Evento;
+
+typedef struct Historico {
+    Evento *inicio;
+    Evento *fim;
+} Historico;</pre>
+<p>
+Lista global encadeada com início e fim, registrando em ordem cronológica os
+eventos <code>CADASTRO</code>, <code>INSCRICAO</code>, <code>ENTRADA_ESPERA</code>,
+<code>CANCEL_INSCRICAO</code>, <code>CANCEL_ESPERA</code>, <code>PROMOCAO</code> e
+<code>AUMENTO_CAPACIDADE</code>. Cada evento armazena <b>cópia dos valores</b>, não
+ponteiros para nós que possam ser removidos. A sequência começa em 1 e incrementa a
+cada registro.
+</p>
+
+<h2>3. Diagrama das estruturas</h2>
+<pre>ABB (indexada por codigo)
+         +-----------------------+
+         |        NoABB          |
+         | atividade *           |
+         | esq *        | dir *  |
+         +-----------+-----------+
+                     |
+                     v
+         +-----------------------+
+         |      Atividade        |
+         | codigo / titulo       |
+         | capacidade            |
+         | qtdInscritos          |
+         | qtdEspera             |
+         | Lista inscritos ------+---> inicio -> [101] -> [102] -> [103] -> NULL
+         | Fila  espera    ------+--->                    fim ----^
+         +-----------------------+
+                 |
+                 v
+         Fila FIFO de espera:
+         inicio -> [104] -> [105] -> NULL
+                             |
+                            fim</pre>
+<p>
+Cada atividade é um nó da ABB; dentro dela, a lista de inscritos e a fila de espera
+são encadeadas e independentes. Uma mesma matrícula pode estar em atividades
+diferentes, mas nunca duas vezes na mesma atividade (nem uma na lista e outra na
+fila).
+</p>
+
+<h2>4. Fluxo de inscrição e cancelamento</h2>
+<h3>4.1 Inscrição (<code>INSCRIVER</code>)</h3>
+<ol>
+  <li>Localizar a atividade na ABB (erro <code>ATIVIDADE_INEXISTENTE</code> se ausente).</li>
+  <li>Verificar se a matrícula já está na lista <b>ou</b> na fila (erro <code>ALUNO_DUPLICADO</code>).</li>
+  <li>Se <code>qtdInscritos &lt; capacidade</code>: inserir no fim da lista, incrementar o contador e registrar <code>INSCRICAO</code>.</li>
+  <li>Caso contrário: enfileirar no fim, incrementar o contador de espera e registrar <code>ENTRADA_ESPERA</code>, informando a posição na fila.</li>
+</ol>
+<h3>4.2 Cancelamento de inscrito (<code>CANCELAR</code>)</h3>
+<ol>
+  <li>Remover o nó da lista em qualquer posição e decrementar o contador.</li>
+  <li>Registrar <code>CANCEL_INSCRICAO</code>.</li>
+  <li>Se houver espera, desenfileirar o primeiro, inseri-lo no fim da lista e registrar <code>PROMOCAO</code> (logo após o cancelamento).</li>
+</ol>
+<h3>4.3 Cancelamento na espera (<code>CANCELAR</code>)</h3>
+<p>
+Remover a reserva da fila mesmo no meio, sem promoção (não havia vaga ocupada), e
+registrar <code>CANCEL_ESPERA</code>. Matrícula ausente nas duas estruturas produz
+<code>ALUNO_NAO_ENCONTRADO</code> sem alterar o estado.
+</p>
+<h3>4.4 Aumento de capacidade (<code>AUMENTAR</code>)</h3>
+<ol>
+  <li>Somar o incremento positivo <code>d</code> à capacidade.</li>
+  <li>Registrar <code>AUMENTO_CAPACIDADE</code>.</li>
+  <li>Promover do início da fila enquanto houver vaga e espera, registrando um <code>PROMOCAO</code> por aluno, em ordem FIFO.</li>
+</ol>
+
+<h2>5. Invariantes preservadas</h2>
+<ul>
+  <li><b>0 ≤ qtdInscritos ≤ capacidade</b> — só se inscreve/promove quando há vaga.</li>
+  <li><b>Contadores espelham os nós reais</b> — todo incremento/decremento acompanha uma inserção/remoção.</li>
+  <li><b>Matrícula nunca nas duas estruturas</b> — duplicidade verificada em ambas antes de inserir.</li>
+  <li><b>Ordem FIFO</b> — enfileira no fim, desenfileira do início; cancelamento no meio apenas religa ponteiros.</li>
+  <li><b>Sem vaga ociosa com espera</b> — toda liberação de vaga promove imediatamente enquanto houver fila.</li>
+  <li><b>Eventos íntegros após liberação</b> — o histórico guarda cópias, não ponteiros.</li>
+  <li><b>Operação inválida não altera estado</b> — validação antes de qualquer mutação; consultas não mutam.</li>
+</ul>
+
+<h2>6. Complexidades</h2>
+<table>
+  <tr><th>Operação</th><th>Custo esperado</th></tr>
+  <tr><td>Busca e inserção na ABB</td><td>O(h); pior caso O(A), com h a altura</td></tr>
+  <tr><td>Percurso em ordem das atividades</td><td>O(A)</td></tr>
+  <tr><td>Inserção no fim da lista ou fila</td><td>O(1) (ponteiro para o fim)</td></tr>
+  <tr><td>Verificação de aluno duplicado</td><td>O(I + E)</td></tr>
+  <tr><td>Cancelamento por matrícula</td><td>O(I + E) no pior caso</td></tr>
+  <tr><td>Promoção de um aluno (início da fila)</td><td>O(1)</td></tr>
+  <tr><td>Promoção de k alunos (aumento)</td><td>O(k), após localizar a atividade</td></tr>
+  <tr><td>Registro de evento no histórico</td><td>O(1) (ponteiro para o fim)</td></tr>
+</table>
+<p>
+A é o número de atividades, I o de inscritos e E o de estudantes na espera de uma
+atividade. A hipótese de árvore degenerada (inserções em ordem crescente ou
+decrescente) leva a busca/inserção a O(A); em árvore equilibrada, O(log A).
+</p>
+
+<h2>7. Testes</h2>
+<table>
+  <tr><th>Arquivo</th><th>Foco</th><th>Resultado</th></tr>
+  <tr><td>t01</td><td>Cadastro, busca, duplicidade, percurso em ordem, contagem e altura da ABB</td><td>OK</td></tr>
+  <tr><td>t02</td><td>Inscrição até a capacidade, entrada em fila FIFO, listagem de inscritos e espera</td><td>OK</td></tr>
+  <tr><td>t03</td><td>Cancelamento de inscrito e promoção; cancelamento do início, meio e fim da fila</td><td>OK</td></tr>
+  <tr><td>t04</td><td>Aumento de capacidade com duas ou mais promoções, ordem FIFO</td><td>OK</td></tr>
+  <tr><td>t05</td><td>Integração de duas atividades, histórico, relatório e entradas inválidas (≥15 comandos)</td><td>OK</td></tr>
+</table>
+<p>
+As saídas <code>.out</code> foram geradas executando o próprio programa sobre os
+arquivos <code>.in</code> (não escritas à mão), e a execução completa passa por um
+teste de memória com <code>mtrace</code> sem vazamentos. Execução:
+<code>./bin/eventos &lt; testes/t01.in</code>.
+</p>
+
+<h2>8. Limitações conhecidas</h2>
+<ul>
+  <li>Título e nome são armazenados como palavra única sem espaços (underscore permitido), conforme o contrato.</li>
+  <li>Remoção de atividades da ABB não é implementada (opcional na especificação).</li>
+  <li>A ABB não é balanceada: em inserções ordenadas degenera para O(A).</li>
+  <li>Linhas de entrada limitadas a 4095 caracteres; contadores em <code>int</code>.</li>
+</ul>
+
+<h2>9. Contribuição da equipe e declaração de participação</h2>
+<table>
+  <tr><th>Integrante</th><th>Matrícula</th><th>Participação</th><th>Atividades realizadas</th></tr>
+  <tr><td>Murilo Sousa</td><td>00000000</td><td>100%</td><td>Todos os módulos (src/), testes e relatório</td></tr>
+  <tr><td><b>Total</b></td><td></td><td><b>100%</b></td><td></td></tr>
+</table>
+<p>
+Os percentuais são declaração conjunta da equipe e devem coincidir com o
+<code>manifesto.json</code>.
+</p>
+
+<h2>10. Declaração de uso de IA</h2>
+<p>
+Foi utilizado um assistente de IA (LLM) como ferramenta de apoio no desenvolvimento.
+Dois exemplos de sugestões aproveitadas ou corrigidas:
+</p>
+<ul>
+  <li><b>Aproveitada</b> — na promoção em lote do comando <code>AUMENTAR</code>,
+  coletar as matrículas promovidas em um vetor temporário para imprimir a linha
+  <code>OK AUMENTAR</code> antes das linhas <code>PROMOVIDO</code>, respeitando a
+  ordem de saída exigida pelo contrato.</li>
+  <li><b>Corrigida</b> — o ajuste do ponteiro <code>fim</code> ao remover o último nó
+  da lista/fila (<code>fim = anterior</code>), evitando ponteiro pendente para memória
+  liberada; o primeiro esboço não tratava esse caso de forma segura.</li>
+</ul>
+<p>
+A utilização de IA não implicou penalidade; a correção do programa, dos testes e do
+relatório permanece de responsabilidade da equipe.
+</p>
+
+</body>
+</html>
