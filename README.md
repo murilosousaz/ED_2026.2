@@ -1,4 +1,4 @@
-# ED2026_2_EQ01 — Sistema de Gerenciamento de Inscrições em Eventos Acadêmicos
+# ED2026_2 — Sistema de Gerenciamento de Inscrições em Eventos Acadêmicos
 
 Trabalho prático de Estrutura de Dados (UECE, 2026.2) — TADs, Árvore Binária de
 Busca, Listas e Filas Encadeadas.
@@ -47,8 +47,3 @@ done
   (mín. 300 atividades / 5.000 solicitações).
 - Consultas `ARVORE` recalculam contagem e altura por percurso (O(A)); não há
   cache desses valores.
-
-## Ajustes antes da entrega
-
-- `manifesto.json` e a tabela de participação do `relatorio.pdf` usam valores
-  provisórios (equipe `EQ01`, matrícula de exemplo) — substituir pelos dados reais.
